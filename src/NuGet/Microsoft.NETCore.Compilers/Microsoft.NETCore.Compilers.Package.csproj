@@ -42,5 +42,9 @@
     </ItemGroup>
   </Target>
 
+  <ItemGroup>
+      <ProjectReferenceTargets Include="Build" Targets="Publish" Condition="'$(TargetFramework)' != ''" />
+  </ItemGroup>
+
   <Import Project="..\Microsoft.Net.Compilers.Toolset\CoreClrCompilerArtifacts.targets"/>
 </Project>

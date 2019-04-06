@@ -52,6 +52,10 @@
     </ItemGroup>
   </Target>
 
+  <ItemGroup>
+      <ProjectReferenceTargets Include="Build" Targets="Publish" Condition="'$(TargetFramework)' != ''" />
+  </ItemGroup>
+
   <Import Project="DesktopCompilerArtifacts.targets" Condition="'$(TargetFramework)' == 'net472'" />
   <Import Project="CoreClrCompilerArtifacts.targets" Condition="'$(TargetFramework)' == 'netcoreapp2.1'" />
 </Project>

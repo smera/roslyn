@@ -2,4 +2,9 @@
 <Project>
   <Import Project="Sdk.targets" Sdk="Microsoft.DotNet.Arcade.Sdk" />
   <Import Project="eng\targets\Imports.targets" />
+
+  <ItemGroup>
+      <ProjectReferenceTargets Include="Publish" Targets="GetCopyToPublishDirectoryItems" />
+      <ProjectReferenceTargets Include="GetCopyToPublishDirectoryItems" Targets="GetCopyToPublishDirectoryItems" />
+  </ItemGroup>
 </Project>
