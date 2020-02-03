@@ -6660,9 +6660,10 @@ End Module
             CleanupAllGeneratedFiles(sourceFile.Path)
         End Sub
 
+        '<ConditionalFact(GetType(IsEnglishLocal))>
         <WorkItem(530221, "http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/530221")>
         <WorkItem(5664, "https://github.com/dotnet/roslyn/issues/5664")>
-        <ConditionalFact(GetType(IsEnglishLocal))>
+        <Fact(Skip:="BXL")>
         Public Sub Bug15538()
             ' The icacls command fails on our Helix machines And it appears to be related to the use of the $ in 
             ' the username. 

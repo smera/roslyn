@@ -1,0 +1,269 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>RunTests</name>
+    </assembly>
+    <members>
+        <member name="F:RunTests.AssemblyScheduler.EventListenerGuardFullName">
+            <summary>
+            This is a test class inserted into assemblies to guard against a .NET desktop bug.  The tests
+            inside of it counteract the underlying issue.  If this test is included in any assembly it 
+            must be added to every partition to ensure the work around is present
+            
+            https://github.com/dotnet/corefx/issues/3793
+            https://github.com/dotnet/roslyn/issues/8936
+            </summary>
+        </member>
+        <member name="F:RunTests.AssemblyScheduler.DefaultMethodLimit">
+            <summary>
+            Default number of methods to include per partition.
+            </summary>
+        </member>
+        <member name="M:RunTests.AssemblyScheduler.ShouldIncludeType(System.Reflection.Metadata.MetadataReader,System.Reflection.Metadata.TypeDefinition,System.Int32)">
+            <summary>
+            Determine if this type should be one of the <c>class</c> values passed to xunit.  This
+            code doesn't actually resolve base types or trace through inherrited Fact attributes
+            hence we have to error on the side of including types with no tests vs. excluding them.
+            </summary>
+        </member>
+        <member name="P:RunTests.Cache.AssemblyUtil.BinariesPath">
+            <summary>
+            The path where binaries need to be loaded from.
+            </summary>
+        </member>
+        <member name="M:RunTests.Cache.AssemblyUtil.IsKnownMissingAssembly(System.Reflection.AssemblyName)">
+             <summary>
+             There are some DLLs whose absence is expected and should not be considered an error.  These
+             are assemblies which are either light up components or are a part of the VS reference graph
+             which are never deployed for our tests.
+            
+             The key here though is to be very explicit about DLLs which are okay to be absent.  In the past
+             we had build issues which failed to properly deploy important binaries like MS.CA and hence 
+             produced bad content cache keys.
+             </summary>
+        </member>
+        <member name="M:RunTests.Cache.AssemblyUtil.GetReferencedAssemblies(System.String)">
+            <summary>
+            Get all of the <see cref="T:System.Reflection.AssemblyName"/> values referenced by the specified assembly.
+            </summary>
+        </member>
+        <member name="M:RunTests.Cache.AssemblyUtil.TryGetAssemblyPath(System.Reflection.AssemblyName,System.String@)">
+             <summary>
+             Get the path for the given <see cref="T:System.Reflection.AssemblyName"/> value.
+             </summary>
+             <remarks>
+             This implementation assumes that we are running on the desktop runtime without any 
+             hidden probing paths.  Hence if the assembly isn't in the application directory then
+             it must be in the GAC.  This is a fine assumption for now as we only run this on the
+             desktop runtime but if caching is ever moved to CoreClr this will need to be revisited.
+            
+             In particular need to consider the ramifications if the tool and tests run on a
+             different runtime.
+             </remarks>
+        </member>
+        <member name="M:RunTests.Cache.CachingTestExecutor.Migrate(RunTests.AssemblyInfo,RunTests.Cache.CachedTestResult)">
+            <summary>
+            Recreate the on disk artifacts for the cached data and return the correct <see cref="T:RunTests.TestResult"/>
+            value.
+            </summary>
+        </member>
+        <member name="T:RunTests.Cache.ContentFile">
+            <summary>
+            Represents a set of content file and the checksum of that conent.
+            </summary>
+        </member>
+        <member name="F:RunTests.Cache.ContentUtil._assemblyChecksumCacheMap">
+            <summary>
+            Building up checksums for assembly values represents a significant amount of time when calculating
+            the content for a given test.  As such we aggressively cache these results.
+            
+            The cache is done by the MVID of the assembly.  This is guaranteed to be different for different
+            content and it's efficient to read.  Hence it's an excellent key.
+            </summary>
+        </member>
+        <member name="F:RunTests.Cache.ContentUtil._referenceSectionMap">
+            <summary>
+            Stores a map between a unit test assembly and the reference section of the content file.  For 
+            a number of assemblies the reference section is calculated multiple times.  That is a non-trivial
+            cost due to the IO and processing
+            </summary>
+        </member>
+        <member name="T:RunTests.Cache.LocalDataStorage">
+            <summary>
+            Data storage that works under %LOCALAPPDATA%
+            </summary>
+        </member>
+        <member name="T:RunTests.ConsoleUtil">
+            <summary>
+            Used to write out to the Console. In addition to writing to the console this will output the same messages
+            to our log file. This ensures the log file can be used as our single point of diagnostics.
+            </summary>
+        </member>
+        <member name="M:RunTests.FileUtil.EnsureDirectory(System.String)">
+            <summary>
+            Ensure a directory with the given name is present.  Will be created if necessary. True
+            is returned when it is created.
+            </summary>
+        </member>
+        <member name="M:RunTests.FileUtil.DeleteFile(System.String)">
+            <summary>
+            Delete file if it exists and swallow any potential exceptions.  Returns true if the
+            file is actually deleted.
+            </summary>
+        </member>
+        <member name="M:RunTests.FileUtil.DeleteDirectory(System.String)">
+            <summary>
+            Delete directory if it exists and swallow any potential exceptions.  Returns true if the
+            directory is actually deleted.
+            </summary>
+        </member>
+        <member name="T:RunTests.TestResultInfo">
+            <summary>
+            The actual results from running the xunit tests.
+            </summary>
+            <remarks>
+            The difference between <see cref="T:RunTests.TestResultInfo"/>  and <see cref="T:RunTests.TestResult"/> is the former 
+            is specifically for the actual test execution results while the latter can contain extra metadata
+            about the results.  For example whether it was cached, or had diagnostic, output, etc ...
+            </remarks>
+        </member>
+        <member name="P:RunTests.TestResultInfo.ResultsFilePath">
+            <summary>
+            Path to the results file.  Can be null in the case xunit error'd and did not create one.
+            </summary>
+        </member>
+        <member name="P:RunTests.TestResult.ProcessResults">
+            <summary>
+            Collection of processes the runner explicitly ran to get the result.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.UseHtml">
+            <summary>
+            Use HTML output files.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.Test64">
+            <summary>
+            Use the 64 bit test runner.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.TargetFrameworkMoniker">
+            <summary>
+            Target framework used to run the tests, e.g. "net472".
+            This is currently only used to name the test result files.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.TestVsi">
+            <summary>
+            Use the open integration test runner.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.UseCachedResults">
+            <summary>
+            Allow the caching of test results.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.Display">
+            <summary>
+            Display the results files.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.Trait">
+            <summary>
+            Trait string to pass to xunit.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.NoTrait">
+            <summary>
+            The no-trait string to pass to xunit.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.Assemblies">
+            <summary>
+            Set of assemblies to test.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.Timeout">
+            <summary>
+            Time after which the runner should kill the xunit process and exit with a failure.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.UseProcDump">
+            <summary>
+            Whether or not to use proc dump to monitor running processes for failures.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.ProcDumpDirectory">
+            <summary>
+            The directory which contains procdump.exe. 
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.TestResultXmlOutputDirectory">
+            <summary>
+            Directory to hold all of the xml files created as test results.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.LogFilesOutputDirectory">
+            <summary>
+            Directory to hold dump files and other log files created while running tests.
+            </summary>
+        </member>
+        <member name="P:RunTests.Options.LogFilesSecondaryOutputDirectory">
+            <summary>
+            Directory to hold secondary dump files created while running tests.
+            </summary>
+        </member>
+        <member name="M:RunTests.ProcDumpUtil.AttachProcDump(System.String,System.Int32,System.String)">
+            <summary>
+            Attaches a new procdump.exe against the specified process.
+            </summary>
+            <param name="procDumpFilePath">The path to the procdump executable</param>
+            <param name="processId">process id</param>
+            <param name="dumpDirectory">destination directory for dumps</param>
+        </member>
+        <member name="M:RunTests.ProcessUtil.GetProcessChildren(System.Diagnostics.Process)">
+            <summary>
+            Return the list of processes which are direct children of the provided <paramref name="process"/> 
+            instance.
+            </summary>
+            <remarks>
+            This is a best effort API.  It can be thwarted by process instances starting / stopping during
+            the building of this list.
+            </remarks>
+        </member>
+        <member name="M:RunTests.ProcessUtil.GetProcessTree(System.Diagnostics.Process)">
+            <summary>
+            Return the list of processes which are direct or indirect children of the provided <paramref name="process"/> 
+            instance.
+            </summary>
+            <remarks>
+            This is a best effort API.  It can be thwarted by process instances starting / stopping during
+            the building of this list.
+            </remarks>
+        </member>
+        <member name="M:RunTests.Program.HandleTimeout(RunTests.Options,System.Threading.CancellationToken)">
+            <summary>
+            Invoked when a timeout occurs and we need to dump all of the test processes and shut down 
+            the runnner.
+            </summary>
+        </member>
+        <member name="M:RunTests.Program.CheckAssemblyList(RunTests.Options)">
+            <summary>
+            Quick sanity check to look over the set of assemblies to make sure they are valid and something was
+            specified.
+            </summary>
+        </member>
+        <member name="M:RunTests.Program.OrderAssemblyList(System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Order the assembly list so that the largest assemblies come first.  This
+            is not ideal as the largest assembly does not necessarily take the most time.
+            </summary>
+            <param name="list"></param>
+        </member>
+        <member name="M:RunTests.Program.CheckTotalDumpFilesSize">
+            <summary>
+            Checks the total size of dump file and removes files exceeding a limit.
+            </summary>
+        </member>
+    </members>
+</doc>

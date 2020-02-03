@@ -5850,7 +5850,8 @@ public class CS1698_a {}
 #if !NETCOREAPP2_1
         [WorkItem(530221, "http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/530221")]
         [WorkItem(5660, "https://github.com/dotnet/roslyn/issues/5660")]
-        [ConditionalFact(typeof(WindowsOnly), typeof(IsEnglishLocal))]
+        // [ConditionalFact(typeof(WindowsOnly), typeof(IsEnglishLocal))]
+        [Fact(Skip = "BXL")]
         public void Bug15538()
         {
             // Several Jenkins VMs are still running with local systems permissions.  This suite won't run properly

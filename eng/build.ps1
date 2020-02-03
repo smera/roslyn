@@ -19,6 +19,9 @@ param (
   [string][Alias('c')]$configuration = "Debug",
   [string][Alias('v')]$verbosity = "m",
   [string]$msbuildEngine = "vs",
+  [string]$MSBuildRepo,
+  [string]$SdkRepo,
+  [string]$pathToBxl,
 
   # Actions
   [switch][Alias('r')]$restore,
@@ -199,6 +202,21 @@ function Process-Arguments() {
 }
 
 function BuildSolution() {
+
+    # & "$SdkRepo\eng\dogfood.ps1" -configuration Release
+
+    # $env:MSBuildBootstrapRoot = Combine $MSBuildRepo "artifacts\bin\bootstrap\net472"
+    # $env:MSBuildBootstrapBinDirectory = Combine $env:MSBuildBootstrapRoot "MSBuild\Current\Bin"
+    # $env:MSBuildBootstrapExe = Combine $env:MSBuildBootstrapBinDirectory "MSBuild.exe"
+    # $env:MSBuildNugetPackages = Combine $MSBuildRepo "artifacts\packages\Release\Shipping"
+    # $env:MSBuildNugetVersion = "16.5.0-dev-19564-01"
+
+    # Write-Host "bootstrap root is $env:MSBuildBootstrapRoot"
+
+    # $env:SdkRepoBinDirectory = Combine $SdkRepo "artifacts\bin\Release\Sdks"
+    # $env:SdkRepo = $SdkRepo
+
+
   # Roslyn.sln can't be built with dotnet due to WPF and VSIX build task dependencies
   $solution = if ($msbuildEngine -eq 'dotnet') { "Compilers.sln" } else { "Roslyn.sln" }
 
@@ -234,39 +252,79 @@ function BuildSolution() {
   # Set DotNetBuildFromSource to 'true' if we're simulating building for source-build.
   $buildFromSource = if ($sourceBuild) { "/p:DotNetBuildFromSource=true" } else { "" }
 
+  $env:TestUsingOptimizedRunner = $false
+  if ($testDesktop -or $testVsi -or $testIOperation) 
+  {
+      $env:TestUsingOptimizedRunner = $true
+       TestUsingOptimizedRunner
+  }
+
   try {
-    MSBuild $toolsetBuildProj `
-      $bl `
-      /p:Configuration=$configuration `
-      /p:Projects=$projects `
-      /p:RepoRoot=$RepoRoot `
-      /p:Restore=$restore `
-      /p:Build=$build `
-      /p:Test=$testCoreClr `
-      /p:Rebuild=$rebuild `
-      /p:Pack=$pack `
-      /p:Sign=$sign `
-      /p:Publish=$publish `
-      /p:ContinuousIntegrationBuild=$ci `
-      /p:OfficialBuildId=$officialBuildId `
-      /p:UseRoslynAnalyzers=$enableAnalyzers `
-      /p:BootstrapBuildPath=$bootstrapDir `
-      /p:TestTargetFrameworks=$testTargetFrameworks `
-      /p:TreatWarningsAsErrors=true `
-      /p:VisualStudioIbcSourceBranchName=$ibcSourceBranchName `
-      /p:VisualStudioIbcDropId=$ibcDropId `
-      /p:EnableNgenOptimization=$applyOptimizationData `
-      /p:IbcOptimizationDataDir=$ibcDir `
-      $suppressExtensionDeployment `
-      $msbuildWarnAsError `
-      $buildFromSource `
-      @properties
+    $env:configuration = $configuration
+    $env:projects = $projects
+    $env:RepoRoot = $RepoRoot
+    $env:restore = $restore
+    $env:build = $build
+    $env:testCoreClr = $testCoreClr
+    $env:rebuild = $rebuild
+    $env:pack = $pack
+    $env:sign = $sign
+    $env:publish = $publish
+    $env:ci = $ci
+    $env:officialBuildId = $officialBuildId
+    $env:enableAnalyzers = $enableAnalyzers
+    $env:bootstrapDir = $bootstrap
+    $env:testTargetFrameworks = $testTargetFrameworks
+    $env:ibcSourceBranchName = $ibcSourceBranchName
+    $env:ibcDropId = $ibcDropId
+    $env:applyOptimizationData = $applyOptimizationData
+    $env:ibcDir = $ibcDir
+    $env:suppressExtensionDeployment = $suppressExtensionDeployment
+    $env:buildFromSource = $buildFromSource
+
+    if (-not $restore)
+    {
+      & "G:\src\corpus\projects\sdk\working\roslyn.tests.bxl\repo\eng\bxl.cmd" $pathToBxl 
+    }
+    else {
+      MSBuild $toolsetBuildProj `
+        $bl `
+        /p:Configuration=$configuration `
+        /p:Projects=$projects `
+        /p:RepoRoot=$RepoRoot `
+        /p:Restore=$restore `
+        /p:Build=$build `
+        /p:Test=$testCoreClr `
+        /p:Rebuild=$rebuild `
+        /p:Pack=$pack `
+        /p:Sign=$sign `
+        /p:Publish=$publish `
+        /p:ContinuousIntegrationBuild=$ci `
+        /p:OfficialBuildId=$officialBuildId `
+        /p:UseRoslynAnalyzers=$enableAnalyzers `
+        /p:BootstrapBuildPath=$bootstrapDir `
+        /p:TestTargetFrameworks=$testTargetFrameworks `
+        /p:TreatWarningsAsErrors=true `
+        /p:VisualStudioIbcSourceBranchName=$ibcSourceBranchName `
+        /p:VisualStudioIbcDropId=$ibcDropId `
+        /p:EnableNgenOptimization=$applyOptimizationData `
+        /p:IbcOptimizationDataDir=$ibcDir `
+        $suppressExtensionDeployment `
+        $msbuildWarnAsError `
+        $buildFromSource `
+        @properties
+    }
   }
   finally {
     ${env:ROSLYNCOMMANDLINELOGFILE} = $null
   }
 }
 
+function Combine
+{
+    [string[]] $argsAsStrings = $args
+    return [System.IO.Path]::Combine($argsAsStrings)
+}
 
 # Get the branch that produced the IBC data this build is going to consume.
 # IBC data are only merged in official built, but we want to test some of the logic in CI builds as well.
@@ -354,10 +412,10 @@ function TestUsingOptimizedRunner() {
   $binDir = Join-Path $ArtifactsDir "bin" 
   $runTests = GetProjectOutputBinary "RunTests.exe"
 
-  if (!(Test-Path $runTests)) {
-    Write-Host "Test runner not found: '$runTests'. Run Build.cmd first." -ForegroundColor Red 
-    ExitWithExitCode 1
-  }
+  # if (!(Test-Path $runTests)) {
+  #   Write-Host "Test runner not found: '$runTests'. Run Build.cmd first." -ForegroundColor Red 
+  #   ExitWithExitCode 1
+  # }
 
   $xunitDir = Join-Path (Get-PackageDir "xunit.runner.console") "tools\net472"
   $args = "`"$xunitDir`""
@@ -366,33 +424,33 @@ function TestUsingOptimizedRunner() {
   $args += " `"-secondaryLogs:$secondaryLogDir`""
   $args += " -nocache"
   $args += " -tfm:net472"
-
+  
   if ($testDesktop -or $testIOperation) {
-    if ($test32) {
-      $dlls = Get-ChildItem -Recurse -Include "*.UnitTests.dll" $binDir
-    } else {
-      $dlls = Get-ChildItem -Recurse -Include "*.UnitTests.dll" -Exclude "*InteractiveHost*" $binDir
-    }
+    # if ($test32) {
+    #   $dlls = Get-ChildItem -Recurse -Include "*.UnitTests.dll" $binDir
+    # } else {
+    #   $dlls = Get-ChildItem -Recurse -Include "*.UnitTests.dll" -Exclude "*InteractiveHost*" $binDir
+    # }
   } elseif ($testVsi) {
     # Since they require Visual Studio to be installed, ensure that the MSBuildWorkspace tests run along with our VS
     # integration tests in CI.
-    if ($ci) {
-      $dlls += @(Get-Item (GetProjectOutputBinary "Microsoft.CodeAnalysis.Workspaces.MSBuild.UnitTests.dll"))
-    }
+    # if ($ci) {
+    #   $dlls += @(Get-Item (GetProjectOutputBinary "Microsoft.CodeAnalysis.Workspaces.MSBuild.UnitTests.dll"))
+    # }
 
-    $dlls += @(Get-ChildItem -Recurse -Include "*.IntegrationTests.dll" $binDir)
+    # $dlls += @(Get-ChildItem -Recurse -Include "*.IntegrationTests.dll" $binDir)
     $args += " -testVsi"
   } else {
-    $dlls = Get-ChildItem -Recurse -Include "*.IntegrationTests.dll" $binDir
+    # $dlls = Get-ChildItem -Recurse -Include "*.IntegrationTests.dll" $binDir
     $args += " -trait:Feature=NetCore"
   }
 
   # Exclude out the multi-targetted netcore app projects
-  $dlls = $dlls | ?{ -not ($_.FullName -match ".*netcoreapp.*") }
+  # $dlls = $dlls | ?{ -not ($_.FullName -match ".*netcoreapp.*") }
 
-  # Exclude out the ref assemblies
-  $dlls = $dlls | ?{ -not ($_.FullName -match ".*\\ref\\.*") }
-  $dlls = $dlls | ?{ -not ($_.FullName -match ".*/ref/.*") }
+  # # Exclude out the ref assemblies
+  # $dlls = $dlls | ?{ -not ($_.FullName -match ".*\\ref\\.*") }
+  # $dlls = $dlls | ?{ -not ($_.FullName -match ".*/ref/.*") }
 
   if ($ci) {
     $args += " -xml"
@@ -413,18 +471,28 @@ function TestUsingOptimizedRunner() {
     $args += " -test64"
   }
 
-  foreach ($dll in $dlls) {
-    $args += " $dll"
-  }
+  $env:testDesktop = $testDesktop
+  $env:testIOperation = $testIOperation
+  $env:testVsi = $testVsi
+  $env:ci = $ci
+  $env:test32 = $test32
+  $env:runTestArgs = $args
+  $env:runTestsExe = $runTests
 
-  try {
-    Exec-Console $runTests $args
-  } finally {
-    Get-Process "xunit*" -ErrorAction SilentlyContinue | Stop-Process
-    if ($testIOperation) {
-      Remove-Item env:\ROSLYN_TEST_IOPERATION
-    }
-  }
+  Write-Host "Setting run tests to $env:runTestsExe"
+
+  # foreach ($dll in $dlls) {
+  #   $args += " $dll"
+  # }
+
+  # try {
+  #   Exec-Console $runTests $args
+  # } finally {
+  #   Get-Process "xunit*" -ErrorAction SilentlyContinue | Stop-Process
+  #   if ($testIOperation) {
+  #     Remove-Item env:\ROSLYN_TEST_IOPERATION
+  #   }
+  # }
 }
 
 function EnablePreviewSdks() {
@@ -622,7 +690,7 @@ try {
     throw $_
   }
 
-  if ($restore -or $build -or $rebuild -or $pack -or $sign -or $publish -or $testCoreClr) {
+  if ($restore -or $build -or $rebuild -or $pack -or $sign -or $publish -or $testCoreClr -or $testDesktop -or $testVsi -or $testIOperation) {
     BuildSolution
   }
 
@@ -630,17 +698,17 @@ try {
     SetVisualStudioBootstrapperBuildArgs
   }
 
-  try
-  {
-    if ($testDesktop -or $testVsi -or $testIOperation) {
-      TestUsingOptimizedRunner
-    }
-  }
-  catch
-  {
-    echo "##vso[task.logissue type=error](NETCORE_ENGINEERING_TELEMETRY=Test) Tests failed"
-    throw $_
-  }
+  # try
+  # {
+  #   if ($testDesktop -or $testVsi -or $testIOperation) {
+  #     TestUsingOptimizedRunner
+  #   }
+  # }
+  # catch
+  # {
+  #   echo "##vso[task.logissue type=error](NETCORE_ENGINEERING_TELEMETRY=Test) Tests failed"
+  #   throw $_
+  # }
 
   if ($launch) {
     $devenvExe = Join-Path $env:VSINSTALLDIR 'Common7\IDE\devenv.exe'

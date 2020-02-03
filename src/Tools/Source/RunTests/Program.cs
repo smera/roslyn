@@ -433,19 +433,19 @@ namespace RunTests
         /// </summary>
         private static void CheckTotalDumpFilesSize()
         {
-            var directory = Directory.GetCurrentDirectory();
-            var dumpFiles = Directory.EnumerateFiles(directory, "*.dmp", SearchOption.AllDirectories).ToArray();
-            long currentTotalSize = 0;
+            // var directory = Directory.GetCurrentDirectory();
+            // var dumpFiles = Directory.EnumerateFiles(directory, "*.dmp", SearchOption.AllDirectories).ToArray();
+            // long currentTotalSize = 0;
 
-            foreach (var dumpFile in dumpFiles)
-            {
-                long fileSizeInMegabytes = (new FileInfo(dumpFile).Length / 1024) / 1024;
-                currentTotalSize += fileSizeInMegabytes;
-                if (currentTotalSize > MaxTotalDumpSizeInMegabytes)
-                {
-                    File.Delete(dumpFile);
-                }
-            }
+            // foreach (var dumpFile in dumpFiles)
+            // {
+            //     long fileSizeInMegabytes = (new FileInfo(dumpFile).Length / 1024) / 1024;
+            //     currentTotalSize += fileSizeInMegabytes;
+            //     if (currentTotalSize > MaxTotalDumpSizeInMegabytes)
+            //     {
+            //         File.Delete(dumpFile);
+            //     }
+            // }
         }
     }
 }

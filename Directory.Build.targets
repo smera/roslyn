@@ -2,4 +2,9 @@
 <Project>
   <Import Project="Sdk.targets" Sdk="Microsoft.DotNet.Arcade.Sdk" />
   <Import Project="eng\targets\Imports.targets" />
+
+  <Target Name="AfterBuild" Condition="$(TestUsingOptimizedRunner) == 'True'">
+    <Message Text="Checking if $(TargetFileName) contains runnable tests" />
+    <Exec Command="powershell $(MSBuildThisFileDirectory)\eng\common\run-test.ps1 -testDesktop %24$(testDesktop) -testIOperation %24$(testIOperation) -test32 %24$(test32) -testVsi %24$(testVsi) -ci %24$(ci) -testRunner $(runTestsExe) -testRunnerArgs '$(runTestArgs)' -dll $(TargetDir)$(TargetFileName)"/>
+  </Target>
 </Project>
